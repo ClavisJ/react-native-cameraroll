@@ -215,6 +215,12 @@ RCT_EXPORT_METHOD(saveToCameraRoll:(NSURLRequest *)request
         options.fetchLimit = 1;
         PHFetchResult<PHAsset *> *createdAsset = [PHAsset fetchAssetsWithLocalIdentifiers:@[placeholder.localIdentifier]
                                                                                   options:options];
+        if (![createdAsset isKindOfClass:[PHAsset class]]) {
+          resolve(@{
+              @"node": [NSNull null]
+          });
+          return;
+        }
         if (createdAsset.count < 1) {
           reject(kErrorUnableToSave, nil, nil);
           return;
@@ -235,6 +241,13 @@ RCT_EXPORT_METHOD(saveToCameraRoll:(NSURLRequest *)request
     }];
   };
   void (^saveWithOptions)(void) = ^void() {
+    if (@available(iOS 14, *)) {
+       PHAuthorizationStatus authStatus = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelAddOnly];
+       if (authStatus == PHAuthorizationStatusAuthorized) {
+         saveBlock();
+         return;
+       }
+     }
     if (![options[@"album"] isEqualToString:@""]) {
 
       PHFetchOptions *fetchOptions = [[PHFetchOptions alloc] init];
