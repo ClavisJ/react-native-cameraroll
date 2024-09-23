@@ -123,7 +123,9 @@ public class CameraRollModule extends NativeCameraRollModuleSpec {
    */
   @ReactMethod
   public void saveToCameraRoll(String uri, ReadableMap options, Promise promise) {
-    new SaveToCameraRoll(getReactApplicationContext(), Uri.parse(uri), options, promise)
+      String newUri = uri.replace("file://","");
+      String path = Uri.encode(newUri,"/");
+    new SaveToCameraRoll(getReactApplicationContext(), Uri.parse("file://"+path), options, promise)
             .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
   }
 
@@ -145,6 +147,9 @@ public class CameraRollModule extends NativeCameraRollModuleSpec {
     @Override
     protected void doInBackgroundGuarded(Void... params) {
       File source = new File(mUri.getPath());
+      if (!source.exists()){
+          FLog.e(ReactConstants.TAG, "不存在");
+      }
       FileInputStream input = null;
       OutputStream output = null;
 
@@ -231,6 +236,12 @@ public class CameraRollModule extends NativeCameraRollModuleSpec {
           output.close();
 
 
+//            String encodeFileName = dest.getName();
+//            FLog.e(ReactConstants.TAG, "编码前的name", encodeFileName);
+//            String decodeFileName = Uri.decode(encodeFileName);
+//            String parentPath = dest.getParent();
+//            String newFilePath = reName(dest.getAbsolutePath(), parentPath + "/" + decodeFileName);
+
           MediaScannerConnection.scanFile(
                   mContext,
                   new String[]{dest.getAbsolutePath()},
@@ -249,6 +260,7 @@ public class CameraRollModule extends NativeCameraRollModuleSpec {
                   });
         }
       } catch (IOException e) {
+          FLog.e(ReactConstants.TAG, "错误", e.toString());
         mPromise.reject(e);
       } finally {
         if (input != null) {
@@ -266,6 +278,31 @@ public class CameraRollModule extends NativeCameraRollModuleSpec {
           }
         }
       }
+    }
+
+    private String reName(String srcFilePath,String desFilePath){
+        try {
+            // 原始文件路径
+            File oldFile = new File(srcFilePath);
+
+            // 新文件路径
+            File newFile = new File(desFilePath);
+
+            // 进行重命名
+            if (oldFile.exists()) {
+                boolean success = oldFile.renameTo(newFile);
+                if (success) {
+                    return desFilePath;
+                } else {
+                    return srcFilePath;
+                }
+            } else {
+                return desFilePath;
+            }
+        } catch (Exception e) {
+            FLog.e(ReactConstants.TAG, "File rename fail", e);
+        }
+        return desFilePath;
     }
 
     private WritableMap getSingleAssetInfo(Uri assetUri) {
@@ -685,7 +722,7 @@ public class CameraRollModule extends NativeCameraRollModuleSpec {
 
     WritableArray subTypes = Arguments.createArray();
     node.putArray("subTypes", subTypes);
-    
+
     if (includeSourceType) {
       node.putString("sourceType", "UserLibrary");
     } else {
@@ -693,7 +730,7 @@ public class CameraRollModule extends NativeCameraRollModuleSpec {
     }
 
     WritableArray group_name = Arguments.createArray();
-  
+
     if (includeAlbums) {
       group_name.pushString(media.getString(groupNameIndex));
     }
